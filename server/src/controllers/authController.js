@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs";
 import User from '../models/User.js';
+import jwt from 'jsonwebtoken';
+
 
 
 export const register = async (req, res) => {
@@ -37,4 +39,37 @@ export const register = async (req, res) => {
     } catch (error){
         res.status(500).json({ message: "Erro no servidor.", error: error.message });
     }
+}
+
+export const login = async (req, res) => {
+  try {
+      //Pegando os dados
+      const {email, password} = req.body;
+
+      //Verificando a existência no banco.
+      const existingUser = await User.findOne({email});
+      //Caso não exista envia mensagem.
+      if (!existingUser){
+          return res.status(400).json({ message: 'E-mail ou senha inválidos.' });
+      }
+
+      //Verificando a senha.
+      const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
+      if (!isPasswordCorrect){
+          return res.status(400).json({ message: 'E-mail ou senha inválidos.' });
+      }
+
+      // Gera o Token JWT
+      const token = jwt.sign(
+          { id: existingUser.id, email: existingUser.email },
+          process.env.JWT_SECRET,
+          { expiresIn: '1h' }
+      );
+
+      //Responde com o token
+      res.status(200).json({message: 'Login bem-sucedido!', token: token});
+
+  } catch (error) {
+      res.status(500).json({ message: "Erro no servidor.", error: error.message });
+  }
 }
